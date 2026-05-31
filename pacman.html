@@ -202,13 +202,13 @@
 
           // Check if player is here
           if (state.player.x === x && state.player.y === y) {
-            cell.innerHTML = '<div class="player">🟡</div>';
+            cell.innerHTML = '<div class="player">🟡</div';
           }
 
           // Check if ghost is here
           const ghost = state.ghosts.find(g => g.x === x && g.y === y);
           if (ghost) {
-            cell.innerHTML += '<div class="ghost">👻</div>';
+            cell.innerHTML += '<div class="ghost">👻</div';
           }
 
           container.appendChild(cell);
