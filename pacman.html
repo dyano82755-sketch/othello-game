@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pacman Style Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: sans-serif;
+      background-color: #000;
+      color: #fff;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #game-container {
+      position: relative;
+      width: 90vw;
+      height: 80vh;
+      max-width: 600px;
+      max-height: 500px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: repeat(19, 1fr);
+      grid-template-rows: repeat(19, 1fr);
+      gap: 1px;
+      background-color: #000;
+      border: 2px solid #00f;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      position: relative;
+    }
+
+    .wall {
+      background-color: #00f;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #fff;
+    }
+
+    .empty {
+      background-color: #000;
+    }
+
+    #score {
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    #message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 2rem;
+      background-color: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    #retry-btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1.2rem;
+      background-color: #ff0;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #retry-btn:hover {
+      background-color: #ffcc00;
+    }
+
+    .player {
+      font-size: 1.5rem;
+      z-index: 10;
+    }
+
+    .ghost {
+      font-size: 1.5rem;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Score: 0</div>
+  <div id="game-container"></div>
+  <div id="message">
+    <div id="message-text"></div>
+    <button id="retry-btn">Retry</button>
+  </div>
+
+  <script>
+    // Game state
+    const state = {
+      board: [],
+      player: { x: 0, y: 0 },
+      ghosts: [],
+      score: 0,
+      gameOver: false,
+      gameClear: false,
+      dots: 0
+    };
+
+    // Initial board layout
+    const initialBoard = [
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+      [1, 3, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 3, 1],
+      [1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+      [1, 2, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 2, 1],
+      [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+      [1, 1, 1, 1, 2, 1, 1, 1, 0, 1, 0, 1, 1, 1, 2, 1, 1, 1, 1],
+      [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+      [1, 1, 1, 1, 2, 1, 0, 1, 1, 0, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+      [0, 0, 0, 0, 2, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0],
+      [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+      [0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0],
+      [1, 1, 1, 1, 2, 1, 0, 1, 1, 1, 1, 1, 0, 1, 2, 1, 1, 1, 1],
+      [1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1],
+      [1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1],
+      [1, 2, 2, 1, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 1, 2, 2, 1],
+      [1, 1, 2, 1, 2, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1, 2, 1, 1],
+      [1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 2, 1],
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ];
+
+    // Initialize game
+    function initGame() {
+      state.board = JSON.parse(JSON.stringify(initialBoard));
+      state.player = { x: 9, y: 15 };
+      state.ghosts = [
+        { x: 9, y: 9 },
+        { x: 8, y: 9 },
+        { x: 10, y: 9 }
+      ];
+      state.score = 0;
+      state.gameOver = false;
+      state.gameClear = false;
+      state.dots = 0;
+
+      // Count dots
+      for (let y = 0; y < state.board.length; y++) {
+        for (let x = 0; x < state.board[y].length; x++) {
+          if (state.board[y][x] === 2) {
+            state.dots++;
+          }
+        }
+      }
+
+      updateScore();
+      renderBoard();
+    }
+
+    // Render board
+    function renderBoard() {
+      const container = document.getElementById('game-container');
+      container.innerHTML = '';
+
+      for (let y = 0; y < state.board.length; y++) {
+        for (let x = 0; x < state.board[y].length; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          switch (state.board[y][x]) {
+            case 1: // Wall
+              cell.classList.add('wall');
+              break;
+            case 2: // Dot
+              cell.classList.add('dot');
+              break;
+            case 3: // Power pellet
+              cell.classList.add('power-pellet');
+              break;
+            default: // Empty
+              cell.classList.add('empty');
+          }
+
+          // Check if player is here
+          if (state.player.x === x && state.player.y === y) {
+            cell.innerHTML = '<div class="player">🟡</div>';
+          }
+
+          // Check if ghost is here
+          const ghost = state.ghosts.find(g => g.x === x && g.y === y);
+          if (ghost) {
+            cell.innerHTML += '<div class="ghost">👻</div>';
+          }
+
+          container.appendChild(cell);
+        }
+      }
+
+      // Update message
+      const message = document.getElementById('message');
+      const messageText = document.getElementById('message-text');
+
+      if (state.gameOver) {
+        messageText.textContent = 'Game Over!';
+        message.style.display = 'block';
+      } else if (state.gameClear) {
+        messageText.textContent = 'You Win!';
+        message.style.display = 'block';
+      } else {
+        message.style.display = 'none';
+      }
+    }
+
+    // Update score display
+    function updateScore() {
+      document.getElementById('score').textContent = `Score: ${state.score}`;
+    }
+
+    // Move player
+    function movePlayer(dx, dy) {
+      if (state.gameOver || state.gameClear) return;
+
+      const newX = state.player.x + dx;
+      const newY = state.player.y + dy;
+
+      // Check if move is valid
+      if (newX >= 0 && newX < state.board[0].length &&
+          newY >= 0 && newY < state.board.length &&
+          state.board[newY][newX] !== 1) {
+        // Move player
+        state.player.x = newX;
+        state.player.y = newY;
+
+        // Eat dot
+        if (state.board[newY][newX] === 2) {
+          state.board[newY][newX] = 0;
+          state.score += 10;
+          state.dots--;
+          updateScore();
+        }
+
+        // Check win condition
+        if (state.dots <= 0) {
+          state.gameClear = true;
+          renderBoard();
+          return;
+        }
+
+        // Move ghosts
+        moveGhosts();
+
+        // Check collision with ghost
+        const ghostCollision = state.ghosts.some(ghost => 
+          ghost.x === state.player.x && ghost.y === state.player.y
+        );
+
+        if (ghostCollision) {
+          state.gameOver = true;
+          renderBoard();
+          return;
+        }
+
+        renderBoard();
+      }
+    }
+
+    // Move ghosts
+    function moveGhosts() {
+      for (let i = 0; i < state.ghosts.length; i++) {
+        const ghost = state.ghosts[i];
+        const dx = state.player.x - ghost.x;
+        const dy = state.player.y - ghost.y;
+
+        // Simple AI: move towards player
+        let moveX = 0;
+        let moveY = 0;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          moveX = dx > 0 ? 1 : -1;
+        } else {
+          moveY = dy > 0 ? 1 : -1;
+        }
+
+        const newX = ghost.x + moveX;
+        const newY = ghost.y + moveY;
+
+        // Check if move is valid
+        if (newX >= 0 && newX < state.board[0].length &&
+            newY >= 0 && newY < state.board.length &&
+            state.board[newY][newX] !== 1) {
+          ghost.x = newX;
+          ghost.y = newY;
+        }
+      }
+    }
+
+    // Handle keyboard input
+    function handleKeyDown(e) {
+      switch (e.key) {
+        case 'ArrowUp':
+          movePlayer(0, -1);
+          break;
+        case 'ArrowDown':
+          movePlayer(0, 1);
+          break;
+        case 'ArrowLeft':
+          movePlayer(-1, 0);
+          break;
+        case 'ArrowRight':
+          movePlayer(1, 0);
+          break;
+      }
+    }
+
+    // Touch controls
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function handleTouchStart(e) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      e.preventDefault();
+    }
+
+    function handleTouchMove(e) {
+      if (touchStartX === 0 || touchStartY === 0) return;
+
+      const touchEndX = e.touches[0].clientX;
+      const touchEndY = e.touches[0].clientY;
+
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+
+      // Determine swipe direction
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0) {
+          movePlayer(1, 0);
+        } else {
+          movePlayer(-1, 0);
+        }
+      } else {
+        if (diffY > 0) {
+          movePlayer(0, 1);
+        } else {
+          movePlayer(0, -1);
+        }
+      }
+
+      touchStartX = 0;
+      touchStartY = 0;
+      e.preventDefault();
+    }
+
+    // Retry button
+    document.getElementById('retry-btn').addEventListener('click', () => {
+      initGame();
+    });
+
+    // Initialize game
+    initGame();
+
+    // Event listeners
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('touchmove', handleTouchMove);
+  </script>
+</body>
+</html>
