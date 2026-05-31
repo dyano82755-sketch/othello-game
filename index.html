@@ -209,7 +209,7 @@
             x: canvas.width / 2,
             y: canvas.height / 2,
             speed: 5,
-            dx: 4,
+            dx: 4, // 初期方向を固定
             dy: -4
         };
 
@@ -237,7 +237,7 @@
             // ボール初期化
             ball.x = canvas.width / 2;
             ball.y = canvas.height / 2;
-            ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1);
+            // ball.dx = 4 * (Math.random() > 0.5 ? 1 : -1); // ランダムな初期方向を削除
             ball.dy = -4;
 
             // スコア初期化
@@ -443,7 +443,7 @@
             const touchX = e.touches[0].clientX;
             const diff = touchX - touchStartX;
             
-            paddle.dx = diff * 0.5;
+            paddle.dx = diff * 0.3; // パドルの移動速度を調整
             touchStartX = touchX;
         });
 
