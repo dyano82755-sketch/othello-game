@@ -107,7 +107,7 @@ async def send_board_and_actions():
         status_msg += "次は **あなたの番 (⚫)** です。打つ座標を選択してください："
         actions = []
         for r, c in sorted(valid_moves):
-            # 【修正箇所】確実に payload={"value": f"{r},{c}"} (辞書型) になっているか確認！
+            # 【修正箇所】payload を辞書型に変更
             actions.append(
                 cl.Action(
                     name="select_move", 
@@ -130,6 +130,7 @@ async def send_board_and_actions():
 @cl.action_callback("select_move")
 async def handle_move(action):
     """ユーザーが盤面の座標ボタンをクリックした際の処理"""
+    # 【修正箇所】payload が辞書型であることを前提に変更
     payload_data = action.payload
     if not isinstance(payload_data, dict) or "value" not in payload_data:
         await cl.Message(content="⚠️ 不正な操作が検出されました。").send()
