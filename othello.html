@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        #game-info {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 2px;
+            background-color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        .cell {
+            width: 60px;
+            height: 60px;
+            background-color: #2e8b57;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .cell:hover {
+            background-color: #3cb371;
+        }
+
+        .cell.valid-move {
+            background-color: #90ee90;
+        }
+
+        .stone {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stone.black {
+            background-color: #000;
+        }
+
+        .stone.white {
+            background-color: #fff;
+            border: 1px solid #ccc;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #score {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>オセロゲーム</h1>
+    <div id="game-info">
+        <div id="status">黒の番です</div>
+        <div id="score">黒: 2 白: 2</div>
+    </div>
+    <div id="board"></div>
+
+    <script>
+        const BOARD_SIZE = 8;
+        let board = [];
+        let currentPlayer = 'black';
+        let validMoves = [];
+
+        function initBoard() {
+            board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(null));
+            // 初期配置
+            board[3][3] = 'white';
+            board[3][4] = 'black';
+            board[4][3] = 'black';
+            board[4][4] = 'white';
+        }
+
+        function renderBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    if (board[r][c]) {
+                        const stone = document.createElement('div');
+                        stone.className = `stone ${board[r][c]}`;
+                        cell.appendChild(stone);
+                    }
+
+                    // 石が置ける場所をハイライト
+                    if (validMoves.some(move => move.row === r && move.col === c)) {
+                        cell.classList.add('valid-move');
+                    }
+
+                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    boardElement.appendChild(cell);
+                }
+            }
+
+            updateScore();
+        }
+
+        function getValidMoves(player) {
+            const moves = [];
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === null && isValidMove(r, c, player)) {
+                        moves.push({row: r, col: c});
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function isValidMove(row, col, player) {
+            if (board[row][col] !== null) return false;
+
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+
+            for (const [dr, dc] of directions) {
+                let r = row + dr;
+                let c = col + dc;
+                let foundOpponent = false;
+
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    if (board[r][c] === null) break;
+                    if (board[r][c] === player) {
+                        if (foundOpponent) return true;
+                        break;
+                    }
+                    foundOpponent = true;
+                    r += dr;
+                    c += dc;
+                }
+            }
+
+            return false;
+        }
+
+        function makeMove(row, col, player) {
+            board[row][col] = player;
+
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+
+            for (const [dr, dc] of directions) {
+                let r = row + dr;
+                let c = col + dc;
+                const toFlip = [];
+
+                while (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE) {
+                    if (board[r][c] === null) break;
+                    if (board[r][c] === player) {
+                        for (const [fr, fc] of toFlip) {
+                            board[fr][fc] = player;
+                        }
+                        break;
+                    }
+                    toFlip.push([r, c]);
+                    r += dr;
+                    c += dc;
+                }
+            }
+        }
+
+        function updateScore() {
+            const count = countStones();
+            document.getElementById('score').textContent = `黒: ${count.black} 白: ${count.white}`;
+        }
+
+        function countStones() {
+            let black = 0;
+            let white = 0;
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === 'black') black++;
+                    if (board[r][c] === 'white') white++;
+                }
+            }
+            return { black, white };
+        }
+
+        function handleCellClick(row, col) {
+            if (currentPlayer !== 'black') return;
+            if (!validMoves.some(move => move.row === row && move.col === col)) return;
+
+            makeMove(row, col, 'black');
+            currentPlayer = 'white';
+            updateStatus();
+            renderBoard();
+
+            // AIの手を待つ
+            setTimeout(() => {
+                aiMove();
+            }, 500);
+        }
+
+        function aiMove() {
+            if (currentPlayer !== 'white') return;
+
+            const moves = getValidMoves('white');
+            if (moves.length === 0) {
+                switchPlayer();
+                return;
+            }
+
+            // ランダムに手を選ぶ
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            makeMove(randomMove.row, randomMove.col, 'white');
+            currentPlayer = 'black';
+            updateStatus();
+            renderBoard();
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const count = countStones();
+            const statusElement = document.getElementById('status');
+            if (count.black + count.white === BOARD_SIZE * BOARD_SIZE) {
+                if (count.black > count.white) {
+                    statusElement.textContent = '黒の勝ち！';
+                } else if (count.white > count.black) {
+                    statusElement.textContent = '白の勝ち！';
+                } else {
+                    statusElement.textContent = '引き分け！';
+                }
+            } else {
+                statusElement.textContent = currentPlayer === 'black' ? '黒の番です' : '白の番です';
+            }
+        }
+
+        function startGame() {
+            initBoard();
+            currentPlayer = 'black';
+            updateStatus();
+            renderBoard();
+        }
+
+        // ゲーム開始
+        startGame();
+    </script>
+</body>
+</html>
