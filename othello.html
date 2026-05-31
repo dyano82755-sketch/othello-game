@@ -123,7 +123,8 @@
                         cell.classList.add('valid-move');
                     }
 
-                    cell.addEventListener('click', () => handleCellClick(r, c));
+                    cell.addEventListener('click', handleCellClick);
+                    cell.addEventListener('touchstart', handleCellClick); // タッチイベントを追加
                     boardElement.appendChild(cell);
                 }
             }
@@ -218,8 +219,23 @@
             return { black, white };
         }
 
-        function handleCellClick(row, col) {
+        function handleCellClick(event) {
             if (currentPlayer !== 'black') return;
+
+            let row, col;
+            if (event.type === 'click') {
+                row = parseInt(event.target.dataset.row);
+                col = parseInt(event.target.dataset.col);
+            } else if (event.type === 'touchstart') {
+                // タッチイベントの場合、最初のタッチの座標を取得
+                const touch = event.touches[0];
+                const rect = event.target.getBoundingClientRect();
+                row = Math.floor((touch.clientY - rect.top) / rect.height);
+                col = Math.floor((touch.clientX - rect.left) / rect.width);
+            } else {
+                return;
+            }
+
             if (!validMoves.some(move => move.row === row && move.col === col)) return;
 
             makeMove(row, col, 'black');
@@ -247,6 +263,7 @@
             makeMove(randomMove.row, randomMove.col, 'white');
             currentPlayer = 'black';
             updateStatus();
+            validMoves = getValidMoves(currentPlayer); // validMovesを更新
             renderBoard();
         }
 
